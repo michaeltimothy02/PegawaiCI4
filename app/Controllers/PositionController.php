@@ -35,6 +35,8 @@ class PositionController extends BaseController
 
     public function create()
     {
+        // dd($this->request->getPost());
+
         $this->positionModel->save([
             'position_name' => $this->request->getPost('position_name'),
             'department_id' => $this->request->getPost('department_id')

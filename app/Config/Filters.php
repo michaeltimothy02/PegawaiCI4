@@ -36,6 +36,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'auth' => \App\Filters\AuthFilter::class,
         'role'      => \App\Filters\RoleFilter::class,
+        'isAdmin' => \App\Filters\AdminFilter::class,
     ];
 
     /**
@@ -67,20 +68,26 @@ class Filters extends BaseFilters
      * List of filter aliases that are always
      * applied before and after every request.
      *
-     * @var array{
-     *     before: array<string, array{except: list<string>|string}>|list<string>,
-     *     after: array<string, array{except: list<string>|string}>|list<string>
-     * }
-     */
-    public array $globals = [
+
+ * Configures relationships between HTTP methods and filters.
+ *
+ * @var array<string, array<string, array<string, string>>>
+ */
+public array $globals = [
         'before' => [
-            // 'honeypot',
-            // 'csrf',
-            // 'invalidchars',
+            // Cukup pasang di sini saja
+            'auth' => [
+                'except' => [
+                    '/', 
+                    'login/*', 
+                    'register/*', 
+                    'api/*', // Meloloskan folder api
+                    'api/employees/*' // Meloloskan sub-folder jika ada
+                ]
+            ],
         ],
         'after' => [
-            // 'honeypot',
-            // 'secureheaders',
+            'toolbar',
         ],
     ];
 

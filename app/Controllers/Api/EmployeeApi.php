@@ -3,157 +3,141 @@
 namespace App\Controllers\Api;
 
 use CodeIgniter\RESTful\ResourceController;
+use CodeIgniter\API\ResponseTrait;
 use App\Models\EmployeeModel;
 
 class EmployeeApi extends ResourceController
 {
+    use ResponseTrait;
+
     protected $modelName = 'App\Models\EmployeeModel';
     protected $format    = 'json';
 
-    // GET: api/employees
+    /**
+     * GET: api/employees
+     * Mengambil semua data pegawai
+     */
     public function index()
     {
-        $data = $this->model
-            ->select('employees.*, users.name as user_name, departments.department_name, positions.position_name')
-            ->join('users', 'users.id = employees.user_id', 'left')
-            ->join('departments', 'departments.id = employees.department_id', 'left')
-            ->join('positions', 'positions.id = employees.position_id', 'left')
-            ->findAll();
-
-        return $this->respond($data);
+        $data = $this->model->findAll();
+        return $this->respond($data, 200);
     }
 
-    // GET: api/employees/1
+    /**
+     * GET: api/employees/(:num)
+     * Mengambil satu data pegawai berdasarkan ID
+     */
     public function show($id = null)
     {
-        $data = $this->model
-            ->select('employees.*, users.name as user_name, departments.department_name, positions.position_name')
-            ->join('users', 'users.id = employees.user_id', 'left')
-            ->join('departments', 'departments.id = employees.department_id', 'left')
-            ->join('positions', 'positions.id = employees.position_id', 'left')
-            ->find($id);
+        $data = $this->model->find($id);
 
         if (!$data) {
-            return $this->failNotFound('Data employee tidak ditemukan');
+            return $this->failNotFound('Data pegawai tidak ditemukan untuk ID ' . $id);
         }
 
-        return $this->respond($data);
+        return $this->respond($data, 200);
     }
 
-    // POST: api/employees
+    /**
+     * POST: api/employees
+     * Menambah data pegawai baru
+     */
     public function create()
     {
         $rules = [
+            'user_id'       => 'required|is_numeric',
             'nip'           => 'required|is_unique[employees.nip]',
-            'department_id' => 'required',
-            'position_id'   => 'required',
-            'salary'        => 'required|numeric',
-            'photo'         => 'is_image[photo]|mime_in[photo,image/jpg,image/jpeg,image/png]|max_size[photo,2048]'
+            'department_id' => 'required|is_numeric',
+            'position_id'   => 'required|is_numeric',
+            'salary'        => 'required|decimal',
         ];
 
         if (!$this->validate($rules)) {
             return $this->fail($this->validator->getErrors());
         }
 
-        // Handle file upload
-        $photo = null;
-        $file = $this->request->getFile('photo');
-        if ($file && $file->isValid() && !$file->hasMoved()) {
-            $newName = $file->getRandomName();
-            $file->move(ROOTPATH . 'public/uploads/photos', $newName);
-            $photo = $newName;
-        }
-
-        $this->model->save([
+        $payload = [
+            'user_id'       => $this->request->getVar('user_id'),
             'nip'           => $this->request->getVar('nip'),
-            'user_id'       => session()->get('user_id'), // dari session login
             'department_id' => $this->request->getVar('department_id'),
             'position_id'   => $this->request->getVar('position_id'),
             'salary'        => $this->request->getVar('salary'),
-            'photo'         => $photo
-        ]);
+        ];
 
-        return $this->respondCreated([
-            'message' => 'Employee berhasil ditambahkan'
-        ]);
+        if ($this->model->insert($payload)) {
+            return $this->respondCreated([
+                'status'  => 201,
+                'message' => 'Data pegawai berhasil ditambahkan',
+                'data'    => $payload
+            ]);
+        }
+
+        return $this->fail('Gagal menyimpan data pegawai.');
     }
 
-    // PUT: api/employees/1
+    /**
+     * PUT: api/employees/(:num)
+     * Mengupdate data pegawai
+     */
     public function update($id = null)
     {
         $data = $this->model->find($id);
-
         if (!$data) {
-            return $this->failNotFound('Data employee tidak ditemukan');
+            return $this->failNotFound('Data tidak ditemukan');
         }
 
-        $rules = [
-            'nip'           => "required|is_unique[employees.nip,id,{$id}]",
-            'department_id' => 'required',
-            'position_id'   => 'required',
-            'salary'        => 'required|numeric',
-            'photo'         => 'is_image[photo]|mime_in[photo,image/jpg,image/jpeg,image/png]|max_size[photo,2048]'
+        $input = $this->request->getRawInput(); // Untuk menangkap data dari Body PUT
+        
+        $payload = [
+            'user_id'       => $input['user_id'] ?? $data['user_id'],
+            'nip'           => $input['nip'] ?? $data['nip'],
+            'department_id' => $input['department_id'] ?? $data['department_id'],
+            'position_id'   => $input['position_id'] ?? $data['position_id'],
+            'salary'        => $input['salary'] ?? $data['salary'],
         ];
 
-        if (!$this->validate($rules)) {
-            return $this->fail($this->validator->getErrors());
+        if ($this->model->update($id, $payload)) {
+            return $this->respond([
+                'status'  => 200,
+                'message' => 'Data pegawai berhasil diperbarui'
+            ]);
         }
 
-        $updateData = [
-            'nip'           => $this->request->getVar('nip'),
-            'department_id' => $this->request->getVar('department_id'),
-            'position_id'   => $this->request->getVar('position_id'),
-            'salary'        => $this->request->getVar('salary')
-        ];
-
-        // Handle file upload
-        $file = $this->request->getFile('photo');
-        if ($file && $file->isValid() && !$file->hasMoved()) {
-            // Hapus foto lama
-            if ($data['photo'] && file_exists(ROOTPATH . 'public/uploads/photos/' . $data['photo'])) {
-                unlink(ROOTPATH . 'public/uploads/photos/' . $data['photo']);
-            }
-            
-            $newName = $file->getRandomName();
-            $file->move(ROOTPATH . 'public/uploads/photos', $newName);
-            $updateData['photo'] = $newName;
-        }
-
-        $this->model->update($id, $updateData);
-
-        return $this->respond([
-            'message' => 'Employee berhasil diupdate'
-        ]);
+        return $this->fail('Gagal memperbarui data.');
     }
 
-    // DELETE: api/employees/1
+    /**
+     * DELETE: api/employees/(:num)
+     * Menghapus data pegawai
+     */
     public function delete($id = null)
     {
         $data = $this->model->find($id);
-
         if (!$data) {
-            return $this->failNotFound('Data employee tidak ditemukan');
+            return $this->failNotFound('Data tidak ditemukan');
         }
 
-        // Hapus foto jika ada
-        if ($data['photo'] && file_exists(ROOTPATH . 'public/uploads/photos/' . $data['photo'])) {
-            unlink(ROOTPATH . 'public/uploads/photos/' . $data['photo']);
+        if ($this->model->delete($id)) {
+            return $this->respondDeleted([
+                'status'  => 200,
+                'message' => 'Data pegawai berhasil dihapus'
+            ]);
         }
 
-        $this->model->delete($id);
-
-        return $this->respondDeleted([
-            'message' => 'Employee berhasil dihapus'
-        ]);
+        return $this->fail('Gagal menghapus data.');
     }
 
-    // Optional: Endpoint untuk mendapatkan positions berdasarkan department
-    // GET: api/positions-by-department/1
-    public function getPositionsByDepartment($department_id)
+    /**
+     * Custom Method: GET api/positions-by-department/(:num)
+     */
+    public function getPositionsByDepartment($departmentId = null)
     {
-        $positionModel = new \App\Models\PositionModel();
-        $data = $positionModel->where('department_id', $department_id)->findAll();
+        // Contoh logika jika ingin mengambil posisi berdasarkan departemen
+        // Pastikan Anda punya model PositionModel atau query custom
+        $db = \Config\Database::connect();
+        $builder = $db->table('positions');
+        $positions = $builder->where('department_id', $departmentId)->get()->getResult();
 
-        return $this->respond($data);
+        return $this->respond($positions);
     }
 }

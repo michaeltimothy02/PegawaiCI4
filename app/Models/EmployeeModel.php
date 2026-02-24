@@ -10,13 +10,16 @@ class EmployeeModel extends Model
     protected $primaryKey = 'id';
 
     protected $allowedFields = [
-        'nip',
-        'name',
-        'department_id',
-        'position_id',
-        'salary',
-        'photo'
-    ];
+    'user_id',
+    'department_id',
+    'position_id',
+    'nip',
+    'gender',
+    'phone',
+    'address',
+    'photo',
+    'salary'
+];
 
     protected $useTimestamps = false;
 }

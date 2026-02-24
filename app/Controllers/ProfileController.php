@@ -23,20 +23,25 @@ class ProfileController extends BaseController
         $this->positionModel = new PositionModel();
     }
 
-    public function index()
-    {
-        $userId = session()->get('user_id');
+public function index()
+{
+    $session = session();
+    $userId = $session->get('user_id');
 
-        $data['employee'] = $this->employeeModel
-            ->select('employees.*, users.name, users.email, departments.department_name, positions.position_name')
-            ->join('users', 'users.id = employees.user_id')
-            ->join('departments', 'departments.id = employees.department_id')
-            ->join('positions', 'positions.id = employees.position_id')
-            ->where('employees.user_id', $userId)
-            ->first();
+    // Lakukan JOIN agar data 'name' dan 'email' dari tabel users bisa terbaca
+    $employee = $this->employeeModel
+        ->select('employees.*, users.name, users.email') // Ambil name dan email dari users
+        ->join('users', 'users.id = employees.user_id')
+        ->where('employees.user_id', $userId)
+        ->first();
 
-        return view('profile/index', $data);
+    if (!$employee) {
+        return "Data profil belum diatur oleh Admin.";
     }
+
+    $data['employee'] = $employee;
+    return view('profile/index', $data);
+}
 
     public function edit()
     {

@@ -1,8 +1,10 @@
 <h2>Tambah Jabatan</h2>
 
 <form action="/positions" method="post">
+    <?= csrf_field() ?>
+    
     <label>Nama Jabatan</label><br>
-    <input type="text" name="name" required><br><br>
+    <input type="text" name="position_name" required><br><br>
 
     <label>Departemen</label><br>
     <select name="department_id" required>
