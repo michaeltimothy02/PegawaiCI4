@@ -23,33 +23,38 @@ class ProfileController extends BaseController
         $this->positionModel = new PositionModel();
     }
 
-public function index()
-{
-    $session = session();
-    $userId = $session->get('user_id');
+    public function index()
+    {
+        $session = session();
+        $userId = $session->get('user_id');
 
-    // Lakukan JOIN agar data 'name' dan 'email' dari tabel users bisa terbaca
-    $employee = $this->employeeModel
-        ->select('employees.*, users.name, users.email') // Ambil name dan email dari users
-        ->join('users', 'users.id = employees.user_id')
-        ->where('employees.user_id', $userId)
-        ->first();
+        // TAMBAHKAN JOIN ke departments dan positions di sini
+        $employee = $this->employeeModel
+            ->select('employees.*, users.name, users.email, departments.department_name, positions.position_name') 
+            ->join('users', 'users.id = employees.user_id')
+            ->join('departments', 'departments.id = employees.department_id', 'left') // Join Departemen
+            ->join('positions', 'positions.id = employees.position_id', 'left')       // Join Jabatan
+            ->where('employees.user_id', $userId)
+            ->first();
 
-    if (!$employee) {
-        return "Data profil belum diatur oleh Admin.";
+        if (!$employee) {
+            return "Data profil belum diatur oleh Admin.";
+        }
+
+        $data['employee'] = $employee;
+        return view('profile/index', $data);
     }
-
-    $data['employee'] = $employee;
-    return view('profile/index', $data);
-}
 
     public function edit()
     {
         $userId = session()->get('user_id');
 
+        // TAMBAHKAN JOIN juga di sini agar nama departemen/jabatan muncul di halaman edit
         $data['employee'] = $this->employeeModel
-            ->select('employees.*, users.name, users.email')
+            ->select('employees.*, users.name, users.email, departments.department_name, positions.position_name')
             ->join('users', 'users.id = employees.user_id')
+            ->join('departments', 'departments.id = employees.department_id', 'left')
+            ->join('positions', 'positions.id = employees.position_id', 'left')
             ->where('employees.user_id', $userId)
             ->first();
 
@@ -66,46 +71,30 @@ public function index()
             ->where('user_id', $userId)
             ->first();
 
+        // Karena kita sudah buat readonly di view sebelumnya, 
+        // hapus 'nip', 'department_id', dan 'salary' dari validation rules 
+        // agar tidak terjadi error jika input tersebut tidak dikirim/kosong.
         $rules = [
-            'nip'           => "required|is_unique[employees.nip,id,{$employee['id']}]",
-            'department_id' => 'required',
-            'salary'        => 'required|numeric',
-            'photo'         => 'is_image[photo]|mime_in[photo,image/jpg,image/jpeg,image/png]',
+            'name'  => 'required',
+            'photo' => 'is_image[photo]|mime_in[photo,image/jpg,image/jpeg,image/png]',
         ];
 
-        $messages = [
-            'nip' => [
-                'required'  => 'NIP wajib diisi.',
-                'is_unique' => 'NIP sudah digunakan.',
-            ],
-            'department_id' => ['required' => 'Departemen wajib dipilih.'],
-            'salary' => [
-                'required' => 'Gaji wajib diisi.',
-                'numeric'  => 'Gaji harus berupa angka.',
-            ],
-            'photo' => [
-                'is_image' => 'File harus berupa gambar.',
-                'mime_in'  => 'Format foto harus JPG atau PNG.',
-            ],
-        ];
-
-        if (!$this->validate($rules, $messages)) {
+        if (!$this->validate($rules)) {
+            // Jika validasi gagal, panggil ulang data dengan JOIN
             $data['employee'] = $this->employeeModel
-                ->select('employees.*, users.name, users.email')
+                ->select('employees.*, users.name, users.email, departments.department_name, positions.position_name')
                 ->join('users', 'users.id = employees.user_id')
+                ->join('departments', 'departments.id = employees.department_id', 'left')
+                ->join('positions', 'positions.id = employees.position_id', 'left')
                 ->where('employees.user_id', $userId)
                 ->first();
-            $data['departments'] = $this->departmentModel->findAll();
             $data['errors'] = $this->validator->getErrors();
             return view('profile/edit', $data);
         }
 
-        $dataUpdate = [
-            'nip'           => $this->request->getPost('nip'),
-            'department_id' => $this->request->getPost('department_id'),
-            'salary'        => $this->request->getPost('salary'),
-        ];
-
+        // Hanya update data yang boleh diubah pegawai (Nama & Foto)
+        $dataUpdate = [];
+        
         $file = $this->request->getFile('photo');
         if ($file && $file->isValid()) {
             $newName = $file->getRandomName();
@@ -113,14 +102,15 @@ public function index()
             $dataUpdate['photo'] = $newName;
         }
 
-        $this->employeeModel->update($employee['id'], $dataUpdate);
+        if(!empty($dataUpdate)) {
+            $this->employeeModel->update($employee['id'], $dataUpdate);
+        }
 
         // Update nama di tabel users
         $this->userModel->update($userId, [
             'name' => $this->request->getPost('name')
         ]);
 
-        // Update session name
         session()->set('name', $this->request->getPost('name'));
 
         return redirect()->to('/profile')->with('success', 'Profil berhasil diupdate!');

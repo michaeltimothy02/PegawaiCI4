@@ -26,7 +26,7 @@ class EmployeeController extends BaseController
         $role = $session->get('role');
         $userId = $session->get('user_id');
 
-        // Query dasar dengan JOIN agar tampilan tabel lengkap (seperti di screenshot kamu)
+        
         $query = $this->employeeModel
             ->select('employees.*, users.name as user_name, departments.department_name, positions.position_name')
             ->join('users', 'users.id = employees.user_id')
@@ -34,10 +34,10 @@ class EmployeeController extends BaseController
             ->join('positions', 'positions.id = employees.position_id');
 
         if ($role === 'admin') {
-            // Admin: Lihat semua data
+            
             $data['employees'] = $query->findAll();
         } else {
-            // Pegawai: Hanya lihat datanya sendiri
+            
             $data['employees'] = $query->where('employees.user_id', $userId)->findAll();
         }
 
@@ -53,7 +53,7 @@ public function new()
     $userModel = new \App\Models\UserModel();
     
     $data['departments'] = $this->departmentModel->findAll();
-    // Ambil user yang rolenya 'pegawai' saja untuk dihubungkan
+    
     $data['users'] = $userModel->where('role', 'pegawai')->findAll(); 
     $data['positions'] = [];
     
@@ -62,9 +62,9 @@ public function new()
 
 public function create()
 {
-    $userModel = new \App\Models\UserModel(); // Panggil model user
+    $userModel = new \App\Models\UserModel(); 
 
-    // 1. Validasi (tambah email & password karena mau buat user baru)
+    
     $rules = [
         'name'          => 'required',
         'nip'           => 'required|is_unique[employees.nip]',
@@ -78,18 +78,18 @@ public function create()
         return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
     }
 
-    // 2. SIMPAN KE TABEL USERS DULU
+    
     $userData = [
         'name'     => $this->request->getPost('name'),
-        'email'    => strtolower(str_replace(' ', '', $this->request->getPost('name'))) . '@mail.com', // Email otomatis dr nama
-        'password' => password_hash('12345', PASSWORD_DEFAULT), // Password default
+        'email'    => strtolower(str_replace(' ', '', $this->request->getPost('name'))) . '@mail.com', 
+        'password' => password_hash('12345', PASSWORD_DEFAULT), 
         'role'     => 'pegawai'
     ];
     
     $userModel->insert($userData);
-    $newUserId = $userModel->insertID(); // <--- AMBIL ID USER BARU
+    $newUserId = $userModel->insertID(); 
 
-    // 3. HANDLE FOTO
+    
     $photo = 'default.png';
     $file = $this->request->getFile('photo');
     if ($file && $file->isValid() && !$file->hasMoved()) {
@@ -98,9 +98,9 @@ public function create()
         $photo = $newName;
     }
 
-    // 4. SIMPAN KE TABEL EMPLOYEES
+    
     $employeeData = [
-        'user_id'       => $newUserId, // Pakai ID yang baru dibuat tadi
+        'user_id'       => $newUserId, 
         'department_id' => $this->request->getPost('department_id'),
         'position_id'   => $this->request->getPost('position_id'),
         'nip'           => $this->request->getPost('nip'),
@@ -127,7 +127,7 @@ public function create()
             ->join('users', 'users.id = employees.user_id')
             ->find($id);
 
-        // Pegawai tidak bisa edit data orang lain
+        
         if ($role !== 'admin' && $employee['user_id'] != $userId) {
             return redirect()->to('/employees')->with('error', 'Anda tidak punya akses.');
         }
@@ -149,7 +149,7 @@ public function create()
 
         $employee = $this->employeeModel->find($id);
 
-        // Pegawai tidak bisa update data orang lain
+        
         if ($role !== 'admin' && $employee['user_id'] != $userId) {
             return redirect()->to('/employees')->with('error', 'Anda tidak punya akses.');
         }
@@ -159,9 +159,9 @@ public function create()
             'nip'           => 'required|is_unique[employees.nip]',
             'department_id' => 'required',
             'position_id'   => 'required',
-            'gender'        => 'required', // Tambahkan ini
-            'phone'         => 'required', // Tambahkan ini
-            'address'       => 'required', // Tambahkan ini
+            'gender'        => 'required', 
+            'phone'         => 'required', 
+            'address'       => 'required', 
             'salary'        => 'required|numeric',
         ];
 

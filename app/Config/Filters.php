@@ -54,13 +54,13 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
-            'forcehttps', // Force Global Secure Requests
-            'pagecache',  // Web Page Caching
+            'forcehttps', 
+            'pagecache',  
         ],
         'after' => [
-            'pagecache',   // Web Page Caching
-            'performance', // Performance Metrics
-            'toolbar',     // Debug Toolbar
+            'pagecache',   
+            'performance',
+            'toolbar',     
         ],
     ];
 
@@ -75,14 +75,19 @@ class Filters extends BaseFilters
  */
 public array $globals = [
         'before' => [
-            // Cukup pasang di sini saja
+            // 
             'auth' => [
                 'except' => [
                     '/', 
+                    'login',
                     'login/*', 
-                    'register/*', 
-                    'api/*', // Meloloskan folder api
-                    'api/employees/*' // Meloloskan sub-folder jika ada
+                    'admin/login',
+                    'admin/login/*',
+                    'register',
+                    'register/*',
+                    'api',
+                    'api/*', 
+                    'api/employees/*' 
                 ]
             ],
         ],

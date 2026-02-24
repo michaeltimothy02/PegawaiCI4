@@ -27,7 +27,7 @@ class DepartmentController extends BaseController
 
     public function create()
     {
-        // dd($this->request->getPost()); // ← debug sementara
+        // dd($this->request->getPost()); 
 
         $this->departmentModel->save([
             'department_name' => $this->request->getPost('department_name')
@@ -36,20 +36,30 @@ class DepartmentController extends BaseController
         return redirect()->to('/departments');
     }
 
-    public function edit($id)
-    {
-        $data['department'] = $this->departmentModel->find($id);
-        return view('departments/edit', $data);
+public function edit($id = null)
+{
+    $model = new \App\Models\DepartmentModel();
+    $data['department'] = $model->find($id);
+
+    if (!$data['department']) {
+        throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
     }
 
-    public function update($id)
-    {
-        $this->departmentModel->update($id, [
-            'department_name' => $this->request->getPost('department_name')
-        ]);
+    return view('departments/edit', $data);
+}
 
-        return redirect()->to('/departments');
-    }
+public function update($id = null)
+{
+    $model = new \App\Models\DepartmentModel();
+    
+    
+    $data = [
+        'department_name' => $this->request->getPost('department_name'),
+    ];
+
+    $model->update($id, $data);
+    return redirect()->to('/departments')->with('success', 'Departemen berhasil diperbarui');
+}
 
     public function delete($id)
     {
